@@ -12,7 +12,7 @@ sentence = sentenceMaker(model)
 
 # %%
 # PART A: Sentence Generation
-sentenceGenerated, distUse = sentence.generate_sentence(show=1)
+sentenceGenerated, distUse = sentence.generate_sentence(show=0)
 
 # display
 print(" The generated Sentence is: ")
@@ -21,5 +21,11 @@ print("Each word was sampled from the following distribution: ")
 print("".join(distUse))
 
 # %%
-# PART 2: Sentence Correction 
-sentence = ""
+# PART B: Sentence Correction 
+sentenceWrongs = ["I think hat twelve thousand pounds", "she haf heard them", "She was ulreedy quit live", "John Knightly wasn’t hard at work", "he said nit word by"]
+for s in sentenceWrongs:
+    print("Input Sentence is: " + s)
+    sentenceFixed = sentence.fixSentence(s)
+    print("Corrected Sentence is:" + sentenceFixed)
+    print("")
+# %%

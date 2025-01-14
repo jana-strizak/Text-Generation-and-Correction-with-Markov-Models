@@ -176,77 +176,68 @@ class sentenceMaker:
     
     def evidenceProb(self, word):
         # find evidence prob matrix for the current word and all keys 
-        P_e = np.zeros(len(self.wordIdx))
 
         # populate with distances between word and each key
-        E = list(map(levDist, (word, self.words)))
-        P_e = [e * math.log(0.01) - math.log(math.factorial(int(e))) for e in E]
-        '''
-        for k in range(0, len(wordIdx)):
-            E = levDist(word, words[k])
-            P_e[k] = E * math.log(0.01) - math.log(math.factorial(int(E)))
-        '''
+        E = list(map(levDist, [word]*len(self.words), self.words))
+        P_e = [e * math.log10(0.01) - math.log10(math.factorial(int(e))) for e in E]
         return P_e
     
     def fixSentence(self, sentenceIn):
+        # implementing Viterbi algorithm to update probabilities of each word at each location in the 
+        # sentence sequence 
         sentenceIn = sentenceIn.split()
 
         # start of forward message
-        n = len(self.wordIdx) 
-        f = np.zeros(n)
-        sentenceIdx = [self.startIndex]
+        n = len(self.wordIndex) # number of vocab words
 
         # initalizing matrices 
-        C = np.zeros([n, len(sentenceIn)])
-        D = np.zeros([n, len(sentenceIn)])
+        P = np.zeros([n, len(sentenceIn)]) # the max Probability of ending up on each word in the sentence sequence
+        P_i = np.zeros([n, len(sentenceIn)]) # tracks the index of the previous state (word) leading to the current word in the current sequence 
 
         # initalize first values
-        D[:,1] = 0 # first column is zeros
+        P_i[:,1] = 0 # first column is zeros
 
         # inital transition matrix (from <s> to character at each row)
         T = np.zeros([n, n])
         for iCurr in range(0, n):
-            mask = bigram[:,1] == iCurr + 1
+            mask = self.Ngram.bigram[:,1] == iCurr + 1
             ip = mask.nonzero()[0]  # the prob dist for after the first character 
-            pcurr = bigram[ip,2] # probability distrbution
-            iLast = bigram[ip,0].astype(int) - 1 # current word choices
+            pcurr = self.Ngram.bigram[ip,2] # probability distrbution from <s> to all other characters
+            iLast = self.Ngram.bigram[ip,0].astype(int) - 1 # all words preceeding <s>
 
-            Tcurr = np.log(np.ones(n) * 1e-6)
-            Tcurr[iLast] = pcurr
+            # transition probabilities from <s> to all other words initalized to ~zero, then take log of prob 
+            Tcurr = np.log10(np.ones(n) * 1e-6)
+            Tcurr[iLast] = np.log10(pcurr) # update known transition probabilities
 
-            T[:,iCurr] = Tcurr
+            T[:,iCurr] = Tcurr # update total transition matrix
 
-        # distance between first word in sentence and every key word
+        # distance between first word in sentence and every vocabulary word
         E = self.evidenceProb(sentenceIn[0])
-        C[:,0] = T[startIndex,:] + E 
+        P[:,0] = T[self.startIndex,:] + E 
 
         # forward part 
         for j in range(1, len(sentenceIn)):
-            Emat = np.zeros(len(words))
             # current word in sentence
             wordCurr = sentenceIn[j]
             
+            # proability the the current word is the vocab word (if d is small, higher likelyhood it is the word)
+            E = self.evidenceProb(wordCurr)
+            
             for i in range(0, n):
-                # evidence matrix between current word in sentence and current key
-                E = levDist(wordCurr, words[i])
-                #E = E * math.log(0.01) - math.log(math.factorial(int(E)))
-                Emat[i] = 100*E
-
-                C[i,j] = np.max(C[:,j-1] + T[:,i] + E)
-                D[i,j] = np.argmax(C[:,j-1] + T[:,i] + E)
+                # since we are working in log(prob), we can add the previous state probability, transition prob, and prob the vocab word is the misspelled word 
+                P[i,j] = np.max(P[:,j-1] + T[:,i] + E[i])
+                P_i[i,j] = np.argmax(P[:,j-1] + T[:,i] + E[i])
                 
-                #C[i,j] = np.max(C[:,j-1]  + 100*E)
-                #D[i,j] = np.argmax(C[:,j-1] + 100*E)
 
         # Backward Part
         sentenceSmoothed = []
-        bestIdx = np.argmax(C[:,-1])
-        prob = 10**np.max(C[:,-1])
+        bestIdx = np.argmax(P[:,-1])
+        prob = 10**np.max(P[:,-1])
 
         for h in range(len(sentenceIn)-1, -1, -1):
-            sentenceSmoothed.append(words[int(bestIdx)])
-            bestIdx = D[int(bestIdx),h]
+            sentenceSmoothed.append(self.words[int(bestIdx)]) # the most likely word (state) in that sequence
+            bestIdx = P_i[int(bestIdx), h] # the word (state) that lead to the current word (state)
 
-        sentenceSmoothedStr = ""
-        for i in range(len(sentenceSmoothed)-1, -1, -1):
-            sentenceSmoothedStr = sentenceSmoothedStr + (sentenceSmoothed[i] + " ")
+            sentenceSmoothed.append(" ")
+        sentenceSmoothed.reverse() 
+        return "".join(sentenceSmoothed)
