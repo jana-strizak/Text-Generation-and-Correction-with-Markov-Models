@@ -29,7 +29,7 @@ Both tasks are found in the main.py file.
 (A) Sentence Generation: 
 The sentence is generated using a Markov model of the Bayesian Network by sampling from the probability P(x_t = k | x_t-1 = j, x_t-2 = i)
 
-For the first word, the sentence start will always be the character "<s>", treated as a word in the vocab.txt
+For the first word, the sentence start will always be the character "< s >", treated as a word in the vocab.txt
 The words will be generated the prior sample: 
                                 P(x_1...x_n) = product_i=1 to n ( P (x_i | parents(x_i) ) 
 sentences end when the "</s> character is reached.
